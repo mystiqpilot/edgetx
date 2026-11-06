@@ -142,6 +142,11 @@ void simuCreateDefaults()
   simuCreateDefaultSettings = true;
 }
 
+void simuJudgeMarkDirty()
+{
+  storageDirty(EE_MODEL | EE_GENERAL);
+}
+
 #if defined(__wasm__)
 static int32_t simuUtcOffset = 0;
 #endif

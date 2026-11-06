@@ -179,6 +179,12 @@ void WASM_EXPORT(simuCreateDefaults)();
 // Flag checked by storageReadAll() to silently create defaults.
 extern bool simuCreateDefaultSettings;
 
+// Mark the current model and the radio settings as changed, so that the next
+// storage check (or simuStop()) writes both in this firmware's own format.
+// Setting a trim to its own value does the same, except for a model whose
+// trims are all disabled. Not upstream (txeditor-wasm branch).
+void WASM_EXPORT(simuJudgeMarkDirty)();
+
 // Aux serial bridge (firmware -> host).  port_nr is 0 for AUX1, 1 for AUX2.
 // encoding values match SimulatorSerialEncoding (0=8N1, 1=8E2, 2=PXX1_PWM)
 // and ETX_Encoding_* — they share the same numeric values.  Called when the
