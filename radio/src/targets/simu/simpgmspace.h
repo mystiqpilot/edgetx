@@ -51,6 +51,11 @@ void stopEepromThread();
 
 void simuMain();
 
+// First-run helper (backport of 3.0's simulib.h): request default radio.yml +
+// model creation if no settings file exists. Call before simuStart().
+void simuCreateDefaults();
+extern bool simuCreateDefaultSettings;
+
 void simuFatfsSetPaths(const char * sdPath, const char * settingsPath);
 
 std::string simuFatfsGetCurrentPath();

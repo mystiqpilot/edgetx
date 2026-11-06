@@ -27,6 +27,10 @@
 
 #include "hal/abnormal_reboot.h"
 
+#if defined(SIMU)
+extern bool simuCreateDefaultSettings;
+#endif
+
 #if defined(COLORLCD)
   #include "theme_manager.h"
 #endif
@@ -209,6 +213,16 @@ void storageReadAll()
   g_eeGeneral.modelCustomScriptsDisabled = true;
   
   if (loadRadioSettings() != nullptr) {
+#if defined(SIMU)
+    if (simuCreateDefaultSettings) {
+      // Web simulator first run: silently create defaults without
+      // STORAGE WARNING alert or calibration screen.
+      simuCreateDefaultSettings = false;
+      storageFormat();
+      g_eeGeneral.chkSum = evalChkSum();
+      forceSave();
+    } else
+#endif
     storageEraseAll();
   }
 #if !defined(STORAGE_MODELSLIST)
