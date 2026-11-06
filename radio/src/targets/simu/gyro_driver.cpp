@@ -19,6 +19,9 @@
  * GNU General Public License for more details.
  */
 
-void gyroInit() {}
+// Same signatures as gyro.h: a WebAssembly link turns a call whose signature
+// differs from the definition into a trap (TX16S's mixer task calls gyroInit()).
+// No IMU in the simulator: fail like the firmware's own no-IMU stubs.
+int gyroInit() { return -1; }
 void gyroRead() {}
-void gyroRead(unsigned char*) {}
+int gyroRead(unsigned char*) { return -1; }
