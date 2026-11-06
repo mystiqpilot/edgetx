@@ -56,6 +56,48 @@ EdgeTX is the cutting edge of OpenTX. It is the place where innovative ideas and
 > [EdgeTX Build Environment Docker Images](https://github.com/EdgeTX/build-edgetx)
 
 
+## Branch `txeditor-wasm/v2.11.7`: WebAssembly simulator modules
+
+This branch builds EdgeTX 2.11.7's
+simulator as a WebAssembly module with the C API of EdgeTX 3.0's web simulator
+(`targets/simu/simulib.h` there), for a headless host: a tool that boots the radio firmware on a
+copy of an SD card and lets it save the card's files in its own format, and a browser simulator.
+The modules are GPL-2.0-only like all of EdgeTX: this branch is their source. It starts at the
+`v2.11.7` tag; see also `txeditor-wasm/v2.12.4` and `txeditor-wasm/3.0-dev`.
+
+Changes against v2.11.7:
+
+- `simuCreateDefaults()` (backport of 3.0): an empty card gets radio.yml and a first model without
+  the STORAGE WARNING alert.
+- `radio/src/targets/simu/wasm_api.cpp` and the WASI section of `targets/simu/CMakeLists.txt`:
+  the `wasi-module` target, exporting 3.0's names (see the differences at the top of
+  `wasm_api.cpp`: no audio, telemetry, trainer or aux serial; radio clock in UTC) plus
+  `simuJudgeMarkDirty()` and `simuPer10ms()`; `cmake/toolchain/wasi-threads.cmake` from 3.0.
+- 2.11 differs from 3.0 for the host: call `simuPer10ms()` every 10 ms while the radio runs
+  (2.11's simulator has no timer task), and the settings path is not an overlay (RADIO/ and
+  MODELS/*.yml are read and written there only: give both paths the card's directory, on a copy).
+- `tools/build-wasm-judge.sh`: builds the `wasi-module` target per radio and writes a manifest.
+
+Build (one build directory per radio under `build/`, at most `MAX_JOBS` compile jobs, default 2):
+
+```bash
+WASI_SDK_PATH=/path/to/wasi-sdk-25.0-x86_64-linux tools/build-wasm-judge.sh -o out tx16s gx12 boxer
+```
+
+Needs CMake 3.24+, [WASI SDK 25](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-25)
+(`WASI_SDK_PATH`, else `/opt/wasi-sdk` or `~/.cache/wasi-sdk-25.0-*`) and a python3 with jinja2,
+pillow, lz4 and pydantic, and the clang Python bindings with a libclang (`LIBCLANG_DIR`, else the newest `/usr/lib/llvm-*/lib`) for `datacopy.inc`. Radio names are those of `tools/build-common.sh`. Each radio gives
+`out/<radio>.wasm`; `out/manifest.json` records board, EdgeTX version, branch, commit, size, sha256,
+build time, the module's `simu*` exports and its `env` imports.
+
+The module is a wasm32-wasip1-threads reactor: the host provides `env.memory` (shared), WASI
+preview 1, `wasi.thread-spawn` (for example `@emnapi/wasi-threads`) and the imports
+`simuGetAnalog(idx)` (0..4096, centre 2048) and `simuTrace(text)`; any other `env` function import
+may be a no-op. Calls: `simuInit()`, `simuFatfsSetPaths(sdPath, settingsPath)`,
+`simuCreateDefaults()` (empty card only), `simuStart(tests, utcOffset)`, then keys, switches, trims,
+the LCD (`simuLcdChanged/Copy/Flushed`) and the output readers; `simuStop()` powers the radio off,
+which writes the current model and `RADIO/radio.yml`.
+
 ## Acknowledgements
 Some icon assets provided by [ICONS8](https://icons8.com).</br>
 Lua Documentation site powered with the kind support of [GitBook](https://www.gitbook.com).
