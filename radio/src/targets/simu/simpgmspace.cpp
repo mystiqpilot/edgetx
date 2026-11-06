@@ -141,6 +141,14 @@ void simuSetTrim(uint8_t trim, bool state)
   trimsStates[trim] = state;
 }
 
+// Backport of 3.0's simulib.cpp (upstream b2fb79d9f): checked by storageReadAll()
+bool simuCreateDefaultSettings = false;
+
+void simuCreateDefaults()
+{
+  simuCreateDefaultSettings = true;
+}
+
 #if defined(SIMU_BOOTLOADER)
 int bootloaderMain();
 static void* bootloaderThread(void*)
