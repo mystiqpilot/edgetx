@@ -59,6 +59,12 @@ if(SIMU_BOOTLOADER)
     )
 endif()
 
+if(WASI)
+  # WebAssembly simulator module: 3.0's simulib.h API names over this
+  # release's simulator (wasm_api.cpp, tools/build-wasm-judge.sh)
+  list(APPEND SIMU_DRIVERS wasm_api.cpp)
+endif()
+
 # Pack all simu driver sources into an object lib
 add_library(simu_drivers OBJECT EXCLUDE_FROM_ALL
   ${SIMU_DRIVERS})
@@ -84,6 +90,55 @@ set(SIMU_SRC ${SIMU_SRC} PARENT_SCOPE)
 
 # Set the options as well in parent scope to be used by unit tests
 set(SIMU_SRC_OPTIONS ${SIMU_SRC_OPTIONS} PARENT_SCOPE)
+
+if(WASI)
+  # The WebAssembly simulator module, as 3.0's targets/simu/CMakeLists.txt
+  # (upstream 04a2231ae, 4c4cb2c31), plus wasi-libc's emulated signal.h.
+  # Configure with cmake/toolchain/wasi-threads.cmake; tools/build-wasm-judge.sh
+  # does it all.
+  set(WASI_COMPILE_OPTIONS
+    -Os
+    -fno-exceptions
+    -ffunction-sections
+    -fdata-sections
+    -D_WASI_EMULATED_SIGNAL
+    # setjmp / longjmp handling
+    -mllvm -wasm-enable-sjlj
+  )
+
+  target_compile_options(radiolib_native PUBLIC ${WASI_COMPILE_OPTIONS})
+  target_compile_options(simu_drivers PUBLIC ${WASI_COMPILE_OPTIONS})
+
+  add_executable(wasi-module EXCLUDE_FROM_ALL
+    ${SIMU_SRC}
+  )
+  set_target_properties(wasi-module PROPERTIES
+    OUTPUT_NAME "edgetx-${FLAVOUR}-simulator"
+    SUFFIX ".wasm"
+  )
+
+  target_compile_options(wasi-module PUBLIC ${WASI_COMPILE_OPTIONS})
+
+  target_link_options(wasi-module PRIVATE
+    -Wl,--import-memory
+    -Wl,--export-memory
+    -Wl,--max-memory=2147483648
+    -Wl,--gc-sections
+    -Wl,--strip-debug
+    # enable runtime to check stack / heap
+    -Wl,--export=__heap_base,--export=__data_end
+    -Wl,--export=malloc -Wl,--export=free
+    # no main()
+    -mexec-model=reactor
+    # setjmp / longjmp
+    -Wl,-mllvm,-wasm-enable-sjlj
+    -lsetjmp
+    -lwasi-emulated-signal
+    # functions this release only declares become "env" imports
+    # (tools/build-wasm-judge.sh lists them in manifest.json)
+    -Wl,--allow-undefined
+  )
+endif()
 
 if(Qt5Widgets_FOUND)
   set(SIMULATOR_FLAVOUR edgetx-${FLAVOUR})
